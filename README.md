@@ -1,0 +1,2 @@
+# Paradigmas
+proyecto paradigmas
