@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MediGest | Recepción</title>
+    <script src="api.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { colors: { clinical: { 50: '#f0fdfa', 500: '#14b8a6', 700: '#0f766e', 900: '#134e4a' } } } } }
+    </script>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden font-sans text-xs antialiased">
+
+    <aside class="w-64 bg-clinical-900 text-white flex flex-col h-full shadow-xl">
+        <div class="p-6 flex items-center gap-3 border-b border-clinical-700">
+            <i class="ri-macbook-line text-2xl text-clinical-500"></i>
+            <h1 class="text-base font-bold">MediGest Recepción</h1>
+        </div>
+        <nav class="flex-1 p-4 space-y-1">
+            <button onclick="mostrarSeccion('control')" id="btn-control" class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors">
+                <i class="ri-dashboard-line"></i> Control de Citas
+            </button>
+        </nav>
+        <div class="p-4 border-t border-clinical-700">
+            <button onclick="cerrarSesion()" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-red-600 transition-colors text-left"><i class="ri-logout-box-r-line"></i> Salir</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
+            <h2 id="titulo-seccion" class="text-base font-bold text-gray-800">Cargando...</h2>
+            <span id="recep-display-name" class="font-medium text-gray-600">--</span>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-gray-50">
+            
+            <div id="sec-control" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-3">
+                    <input type="text" id="buscar-medico-input" placeholder="Buscar citas por médico..." class="flex-1 bg-gray-50 border p-2 rounded-lg outline-none">
+                    <button onclick="filtrarCitasPorMedico()" class="bg-clinical-700 text-white px-4 py-2 rounded-lg font-medium">Filtrar</button>
+                    <button onclick="limpiarFiltroCitas()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">Limpiar</button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-700 uppercase font-semibold">
+                            <tr>
+                                <th class="px-6 py-3">Cita / Paciente</th>
+                                <th class="px-6 py-3">Médico asignado</th>
+                                <th class="px-6 py-3">Costo base</th>
+                                <th class="px-6 py-3">Estatus</th>
+                                <th class="px-6 py-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-control-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="modal-ticket" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 font-mono">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-gray-800 border-t-4 border-clinical-700">
+            <div class="text-center border-b pb-2 border-dashed">
+                <h3 class="font-bold uppercase">Hospital San José</h3>
+                <p class="text-[10px] text-gray-400">Folio Cita: #<span id="ticket-folio">0</span></p>
+                <p class="text-[10px]" id="ticket-fecha">Fecha: --</p>
+            </div>
+            <div class="space-y-1 text-[11px]">
+                <p><strong>Paciente:</strong> <span id="ticket-paciente">--</span></p>
+                <p><strong>Médico:</strong> <span id="ticket-medico">--</span></p>
+            </div>
+            <div class="space-y-2 text-[11px]">
+                <div class="flex justify-between"><span>• Costo Consulta</span><span>$<span id="ticket-costo-consulta">0.00</span></span></div>
+            </div>
+            <div class="border-t pt-2 border-dashed flex justify-between font-bold text-gray-900 bg-clinical-50 p-2 rounded">
+                <span>TOTAL PAGADO:</span><span>$<span id="ticket-total">0.00</span></span>
+            </div>
+            <button onclick="document.getElementById('modal-ticket').style.display='none'" class="w-full bg-gray-800 text-white py-2 rounded-lg text-[10px] font-bold uppercase">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        const recepNombre = localStorage.getItem('user_name') || 'Administrativo';
+
+        function mostrarSeccion(seccion) {
+            ['control'].forEach(id => {
+                document.getElementById(`sec-${id}`).style.display = 'none';
+                document.getElementById(`btn-${id}`).className = "w-full flex items-center gap-3 p-3 rounded-lg hover:bg-clinical-700 text-clinical-50 transition-colors text-left";
+            });
+            document.getElementById(`sec-${seccion}`).style.display = 'block';
+            document.getElementById(`btn-${seccion}`).className = "w-full flex items-center gap-3 p-3 rounded-lg bg-clinical-700 text-white transition-colors text-left font-semibold shadow-inner";
+            const titulos = { 'control': 'Control General de Citas' };
+            document.getElementById('titulo-seccion').innerText = titulos[seccion];
+            if (seccion === 'control') cargarMonitorCitas();
+        }
+
+        // Solo se cancelan citas vigentes; el ticket existe desde que la cita se paga.
+        const CANCELABLES = ['agendada pendiente', 'pagada pendiente por atender'];
+        function accionesCita(folio, estatus) {
+            const e = (estatus || '').trim().toLowerCase();
+            let a = '';
+            if (CANCELABLES.includes(e)) a += `<button onclick="cancelarCitaHospital(${folio})" class="text-red-600 bg-red-50 px-2 py-1 rounded font-bold mr-2">Cancelar</button>`;
+            if (e === 'pagada pendiente por atender' || e === 'atendida') a += `<button onclick="generarTicketFinal(${folio})" class="bg-clinical-700 text-white px-2 py-1 rounded font-bold"><i class="ri-receipt-line"></i> Ticket</button>`;
+            return a || '<span class="text-gray-400 italic">Sin acciones</span>';
+        }
+
+        async function cargarMonitorCitas() {
+            try {
+                const res = await fetch('/api/recepcion/citas');
+                const citas = await res.json();
+                const tbody = document.getElementById('tabla-control-body');
+                tbody.innerHTML = '';
+                citas.forEach(c => {
+                    const estatus = c.Pago_Cita ? c.Pago_Cita.trim() : '';
+                    tbody.innerHTML += `<tr>
+                        <td class="px-6 py-4 font-bold">#${c.Folio_Cita}<br><span class="text-gray-400 font-normal">${esc(c.Nombre_Paciente)}</span></td>
+                        <td class="px-6 py-4">${esc(c.Nombre_Doctor)}<br><span class="text-gray-400">${new Date(c.Fecha).toLocaleDateString()} ${esc(String(c.Horario).substring(0,5))}</span></td>
+                        <td class="px-6 py-4">$${Number(c.Monto_Pago || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full font-medium ${estatus === 'Atendida' ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'}">${esc(estatus)}</span></td>
+                        <td class="px-6 py-4 text-center">${accionesCita(c.Folio_Cita, estatus)}</td>
+                    </tr>`;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function generarTicketFinal(folioCita) {
+            try {
+                const res = await fetch(`/api/recepcion/ticket/${folioCita}`);
+                const data = await res.json();
+                if (!data.success) { alert(data.error); return; }
+                const t = data.ticket;
+                document.getElementById('ticket-folio').innerText = t.Folio_Cita;
+                document.getElementById('ticket-fecha').innerText = `Fecha: ${new Date(t.Fecha).toLocaleDateString()}`;
+                document.getElementById('ticket-paciente').innerText = t.Paciente;
+                document.getElementById('ticket-medico').innerText = t.Medico;
+                document.getElementById('ticket-costo-consulta').innerText = Number(t.Costo_Consulta).toFixed(2);
+                document.getElementById('ticket-total').innerText = Number(t.Gran_Total).toFixed(2);
+                document.getElementById('modal-ticket').style.display = 'flex';
+            } catch(e) { alert('Error al generar el ticket.'); }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => { document.getElementById('recep-display-name').innerText = recepNombre; mostrarSeccion('control'); });
+    </script>
+</body>
+</html>
