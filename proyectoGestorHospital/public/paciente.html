@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGBD Hospital | Pacientes</title>
+    <script src="api.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { clinical: { 50: '#f0fdfa', 500: '#14b8a6', 700: '#0f766e', 900: '#134e4a' } } } }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden font-sans antialiased text-xs">
+
+    <aside class="w-64 bg-clinical-900 text-white flex flex-col h-full shadow-2xl z-20">
+        <div class="p-6 flex items-center gap-3 border-b border-clinical-700">
+            <i class="ri-heart-pulse-line text-3xl text-clinical-500"></i>
+            <div>
+                <h1 class="text-xl font-bold leading-tight">MediGest</h1>
+                <p class="text-xs text-clinical-50 opacity-80">Portal de Pacientes</p>
+            </div>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="mostrarSeccion('dashboard')" id="btn-dashboard" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-clinical-700 text-clinical-50 text-left font-medium"><i class="ri-dashboard-line text-lg"></i> Mi Expediente</button>
+            <button onclick="mostrarSeccion('agendar')" id="btn-agendar" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-clinical-700 text-clinical-50 text-left font-medium"><i class="ri-calendar-todo-line text-lg"></i> Agendar Cita</button>
+        </nav>
+        <div class="p-4 border-t border-clinical-700">
+            <button onclick="darmeDeBaja()" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 text-clinical-50 text-left font-medium mb-1"><i class="ri-user-unfollow-line text-lg"></i> Darme de baja</button>
+            <button onclick="cerrarSesion()" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-red-600 text-clinical-50 text-left font-medium"><i class="ri-logout-box-r-line text-lg"></i> Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
+            <h2 id="titulo-seccion" class="text-xl font-bold text-gray-800">Mi Expediente Médico</h2>
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-clinical-500 flex items-center justify-center text-white font-bold" id="avatar-letras">PA</div>
+                <span class="text-sm font-medium text-gray-600" id="paciente-display-name">Paciente</span>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-gray-50">
+            <div id="sec-dashboard" class="hidden space-y-6">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-xs text-gray-400 font-bold uppercase">Nombre</p><p class="text-sm font-semibold text-gray-800 mt-1" id="exp-nombre">...</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-xs text-gray-400 font-bold uppercase">Dirección</p><p class="text-sm font-semibold text-gray-800 mt-1" id="exp-direccion">...</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-xs text-gray-400 font-bold uppercase">ID Interno</p><p class="text-sm font-mono font-bold text-clinical-700 mt-1" id="exp-id">ID: --</p></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div class="p-4 bg-gray-50 border-b"><h3 class="font-bold text-gray-700">Mis Citas Reservadas</h3></div>
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-gray-100 text-gray-700 uppercase font-semibold">
+                            <tr><th class="px-6 py-3">Folio / Fecha</th><th class="px-6 py-3">Médico</th><th class="px-6 py-3">Costo</th><th class="px-6 py-3">Estatus</th><th class="px-6 py-3 text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="tabla-citas-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-agendar" class="hidden max-w-xl mx-auto">
+                <form id="form-agendar-cita" onsubmit="registrarCitaPaciente(event)" class="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+                    <h3 class="text-base font-bold text-gray-800">Reservar Consulta</h3>
+                    <select id="form-doctor" required class="w-full bg-gray-50 border p-2.5 rounded-lg outline-none"></select>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="date" id="form-fecha" required class="w-full bg-gray-50 border p-2.5 rounded-lg" title="Entre 48 horas y 3 meses a partir de hoy">
+                        <input type="time" id="form-hora" required class="w-full bg-gray-50 border p-2.5 rounded-lg">
+                    </div>
+                    <p class="text-[11px] text-gray-500">Reglas: agenda con 48 horas a 3 meses de anticipación, paga en las 8 horas siguientes y cancela hasta 8 horas antes (reembolso del 50 % si ya pagaste). Las citas no se reagendan.</p>
+                    <button type="submit" class="w-full bg-clinical-700 text-white py-2.5 rounded-lg font-medium">Agendar</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-ver-receta" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 border-t-4 border-clinical-700 shadow-xl">
+            <h3 class="text-sm font-bold text-center text-clinical-900 uppercase">Detalle de Receta #<span id="receta-num">0</span></h3>
+            <div class="bg-gray-50 p-3 rounded border text-[11px] space-y-1">
+                <p><strong>Médico:</strong> <span id="receta-medico">--</span></p>
+                <p><strong>Cédula:</strong> <span id="receta-cedula" class="font-mono">--</span></p>
+            </div>
+            <div class="space-y-2">
+                <p><strong>Diagnóstico:</strong></p><p id="receta-diagnostico" class="bg-gray-100 p-2 rounded italic"></p>
+                <p><strong>Medicamentos:</strong></p><p id="receta-medicamentos" class="bg-teal-50 border p-2 rounded whitespace-pre-line font-medium"></p>
+                <p><strong>Tratamiento:</strong></p><p id="receta-tratamiento" class="bg-gray-50 p-2 rounded"></p>
+            </div>
+            <button onclick="document.getElementById('modal-ver-receta').style.display='none'" class="w-full bg-clinical-700 text-white py-2 rounded-lg font-bold">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        const pacienteId = localStorage.getItem('user_id');
+        const pacienteNombre = localStorage.getItem('user_name') || 'Paciente';
+
+        function mostrarSeccion(seccion) {
+            ['dashboard', 'agendar'].forEach(id => {
+                document.getElementById(`sec-${id}`).style.display = 'none';
+                document.getElementById(`btn-${id}`).className = "w-full flex items-center gap-3 p-3 rounded-lg hover:bg-clinical-700 text-clinical-50 text-left text-xs";
+            });
+            document.getElementById(`sec-${seccion}`).style.display = 'block';
+            document.getElementById(`btn-${seccion}`).className = "w-full flex items-center gap-3 p-3 rounded-lg bg-clinical-700 text-white font-semibold text-left text-xs shadow-inner";
+            if(seccion === 'dashboard') { cargarExpediente(); cargarCitasPaciente(); }
+            if(seccion === 'agendar') cargarCatDoctores();
+        }
+
+        async function cargarExpediente() {
+            const res = await fetch(`/api/pacientes/${pacienteId}/datos`);
+            const d = await res.json();
+            document.getElementById('exp-nombre').innerText = `${d.Nombre || pacienteNombre} ${d.A_P || ''}`;
+            document.getElementById('exp-direccion').innerText = d.Calle ? `${d.Calle}, ${d.Ciudad}` : 'No registrada';
+            document.getElementById('exp-id').innerText = `ID: #${pacienteId}`;
+        }
+
+        async function cargarCitasPaciente() {
+            try {
+                const res = await fetch(`/api/pacientes/${pacienteId}/citas-sp`);
+                const citas = await res.json();
+                const tbody = document.getElementById('tabla-citas-body');
+                tbody.innerHTML = '';
+
+                if (!citas || citas.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Sin citas registradas.</td></tr>`;
+                    return;
+                }
+
+                citas.forEach(c => {
+                    const estatus = c.Estatus ? c.Estatus.toString().trim().toLowerCase() : 'agendada pendiente';
+                    const folio = c.Folio_Cita;
+                    let btnAction = '';
+
+                    if (estatus.includes('pagada') || estatus.includes('atender') || estatus.includes('por atender')) {
+                        btnAction = `
+                            <div class="flex flex-col gap-1 items-center">
+                                <span class="text-blue-700 italic font-medium bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg">⏳ Esperando Atención</span>
+                                <button onclick="cancelarCitaDesdePaciente(${folio})" class="text-red-500 hover:text-red-700 underline text-[10px] mt-1">❌ Cancelar Consulta</button>
+                            </div>`;
+                    } else if (estatus.includes('atendida')) {
+                        btnAction = `<button onclick="verRecetaModal(${folio})" class="bg-clinical-700 text-white font-bold px-3 py-1 rounded hover:bg-clinical-900 transition-all">📄 Ver Receta</button>`;
+                    } else if (estatus.includes('agendada') || estatus.includes('pendiente')) {
+                        btnAction = `
+                            <div class="flex flex-col gap-1 items-center">
+                                <button onclick="pagarConsultaInmediata(${folio})" class="bg-yellow-500 text-gray-900 font-bold px-3 py-1 rounded hover:bg-yellow-600 transition-all mb-1">💳 Pagar Cita</button>
+                                <button onclick="cancelarCitaDesdePaciente(${folio})" class="text-red-500 hover:text-red-700 underline text-[10px]">❌ Cancelar</button>
+                            </div>`;
+                    } else {
+                        btnAction = `<span class="text-gray-400 italic">No requiere acción</span>`;
+                    }
+
+                    tbody.innerHTML += `<tr>
+                        <td class="px-6 py-4 font-bold">#${folio}<br><span class="text-[10px] text-gray-400 font-normal">${c.Fecha ? new Date(c.Fecha).toLocaleDateString() : '--'}</span></td>
+                        <td class="px-6 py-4 font-medium">${esc(c.Medico)}</td>
+                        <td class="px-6 py-4 font-semibold">$${Number(c.Monto).toFixed(2)}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full capitalize text-[10px] bg-blue-50 text-blue-700">${esc(c.Estatus)}</span></td>
+                        <td class="px-6 py-4 text-center">${btnAction}</td>
+                    </tr>`;
+                });
+            } catch (e) { console.error("Error al renderizar:", e); }
+        }
+
+        async function pagarConsultaInmediata(folio) {
+            try {
+                const res = await fetch('/api/pacientes/pagar-cita', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ Folio_Cita: folio }) 
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert('¡Pago procesado exitosamente!');
+                } else {
+                    alert('No se pudo pagar: ' + data.error);
+                }
+                await cargarCitasPaciente();
+            } catch(e) { 
+                console.error(e);
+                alert('Error al comunicar el pago.');
+            }
+        }
+
+        async function cancelarCitaDesdePaciente(folio) {
+            if(!confirm('¿Cancelar esta cita? Solo se permite hasta 8 horas antes; si ya la pagaste se te reembolsa el 50 %.')) return;
+            try {
+                const res = await fetch(`/api/citas/${folio}`, { method: 'DELETE' });
+                const data = await res.json();
+                if(data.success) {
+                    const porcentaje = data.datosReembolso.porcentaje;
+                    const devuelto = data.datosReembolso.montoDevuelto;
+
+                    alert(`¡Cita cancelada con éxito!\n\n🔹 Porcentaje de Reembolso: ${porcentaje}%\n🔹 Monto a Devolver: $${Number(devuelto).toFixed(2)}`);
+                    await cargarCitasPaciente(); 
+                } else {
+                    alert('No se pudo cancelar: ' + data.error);
+                }
+            } catch(e) {
+                alert('Error de conexión.');
+            }
+        }
+
+        async function verRecetaModal(folioCita) {
+            const res = await fetch(`/api/pacientes/receta/${folioCita}`);
+            const data = await res.json();
+            if(data.success) {
+                const r = data.receta;
+                document.getElementById('receta-num').innerText = r.Num_Receta;
+                document.getElementById('receta-medico').innerText = r.Medico;
+                document.getElementById('receta-cedula').innerText = r.Cedula_Profesional;
+                document.getElementById('receta-diagnostico').innerText = r.Diagnostico;
+                document.getElementById('receta-medicamentos').innerText = r.Medicamentos.split(' | ').join('\n• ');
+                document.getElementById('receta-tratamiento').innerText = r.Tratamiento;
+                document.getElementById('modal-ver-receta').style.display = 'flex';
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function cargarCatDoctores() {
+            const res = await fetch('/api/recepcion/medicos');
+            const docs = await res.json();
+            const sel = document.getElementById('form-doctor');
+            sel.innerHTML = '';
+            docs.forEach(d => { sel.innerHTML += `<option value="${d.id_Doctor}">Dr. ${esc(d.Nombre_Doctor)} · ${esc(d.Especialidad)} · $${Number(d.Costo_Consulta).toFixed(0)} · ${esc(d.Horario_Atencion)}</option>`; });
+        }
+
+        async function registrarCitaPaciente(event) {
+            event.preventDefault();
+            const payload = { Paciente_id_Paciente: pacienteId, Doctor_id_Doctor: document.getElementById('form-doctor').value, Fecha: document.getElementById('form-fecha').value, Horario: document.getElementById('form-hora').value };
+            const res = await fetch('/api/citas/agendar-sp', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if(data.success) { alert(data.mensaje || 'Cita agendada.'); mostrarSeccion('dashboard'); }
+            else { alert('No se pudo agendar: ' + data.error); }
+        }
+
+        async function darmeDeBaja() {
+            const contrasenia = prompt('Para darte de baja escribe tu contraseña:');
+            if (contrasenia === null) return;
+            const res = await fetch(`/api/pacientes/${pacienteId}/baja`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contrasenia }) });
+            const data = await res.json();
+            if (data.success) { alert(data.message); localStorage.clear(); window.location.href = 'index.html'; }
+            else { alert('No se pudo dar de baja: ' + data.error); }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('paciente-display-name').innerText = pacienteNombre;
+            const f = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const hoy = new Date(), tope = new Date(); tope.setMonth(tope.getMonth() + 3);
+            const min = new Date(); min.setDate(min.getDate() + 2);
+            document.getElementById('form-fecha').min = f(min); document.getElementById('form-fecha').max = f(tope);
+            mostrarSeccion('dashboard');
+        });
+    </script>
+</body>
+</html>

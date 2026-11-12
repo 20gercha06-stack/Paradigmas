@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediGest | Administración</title>
+    <script src="api.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { colors: { clinical: { 50: '#f0fdfa', 500: '#14b8a6', 700: '#0f766e', 900: '#134e4a' } } } } }
+    </script>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden font-sans text-xs antialiased">
+
+    <aside class="w-64 bg-clinical-900 text-white flex flex-col h-full shadow-xl">
+        <div class="p-6 flex items-center gap-3 border-b border-clinical-700">
+            <i class="ri-shield-user-line text-2xl text-clinical-500"></i>
+            <h1 class="text-base font-bold">MediGest Administración</h1>
+        </div>
+        <nav class="flex-1 p-4 space-y-1">
+            <button onclick="mostrarSeccion('personal')" id="btn-personal" class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors"><i class="ri-team-line"></i> Personal activo</button>
+            <button onclick="mostrarSeccion('alta')" id="btn-alta" class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors"><i class="ri-user-add-line"></i> Alta de personal</button>
+            <button onclick="mostrarSeccion('solicitudes')" id="btn-solicitudes" class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors"><i class="ri-mail-check-line"></i> Cancelaciones de médicos</button>
+        </nav>
+        <div class="p-4 border-t border-clinical-700">
+            <button onclick="cerrarSesion()" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-red-600 transition-colors text-left"><i class="ri-logout-box-r-line"></i> Salir</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
+            <h2 id="titulo-seccion" class="text-base font-bold text-gray-800">Cargando...</h2>
+            <span id="admin-display-name" class="font-medium text-gray-600">--</span>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-gray-50">
+            <div id="sec-personal" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-700 font-semibold uppercase">
+                            <tr><th class="px-6 py-3">Personal</th><th class="px-6 py-3">Tipo</th><th class="px-6 py-3">Cédula / Especialidad</th><th class="px-6 py-3">Horario</th><th class="px-6 py-3 text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="tabla-personal-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-alta" class="hidden max-w-xl mx-auto">
+                <form id="form-alta" onsubmit="altaPersonal(event)" class="bg-white p-6 rounded-xl shadow-sm border space-y-3">
+                    <select id="alta-tipo" onchange="alternarCamposDoctor()" class="w-full bg-gray-50 border p-2 rounded-lg">
+                        <option value="Doctor">Doctor</option>
+                        <option value="Recepcionista">Recepcionista</option>
+                    </select>
+                    <div class="grid grid-cols-3 gap-3">
+                        <input type="text" id="alta-nombre" placeholder="Nombre" required class="bg-gray-50 border p-2 rounded-lg">
+                        <input type="text" id="alta-ap" placeholder="Ap. paterno" required class="bg-gray-50 border p-2 rounded-lg">
+                        <input type="text" id="alta-am" placeholder="Ap. materno" required class="bg-gray-50 border p-2 rounded-lg">
+                    </div>
+                    <div id="campos-doctor" class="space-y-3">
+                        <input type="text" id="alta-cedula" placeholder="Cédula profesional" class="w-full bg-gray-50 border p-2 rounded-lg">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="number" min="1" id="alta-esp" placeholder="ID de especialidad (1-10)" class="bg-gray-50 border p-2 rounded-lg">
+                            <input type="number" min="1" id="alta-cons" placeholder="No. de consultorio (101-110)" class="bg-gray-50 border p-2 rounded-lg">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="block"><span class="block font-medium mb-1">Entrada</span><input type="time" id="alta-inicio" value="07:00" required class="w-full bg-gray-50 border p-2 rounded-lg"></label>
+                        <label class="block"><span class="block font-medium mb-1">Salida</span><input type="time" id="alta-fin" value="14:00" required class="w-full bg-gray-50 border p-2 rounded-lg"></label>
+                        <label class="block"><span class="block font-medium mb-1">Sueldo</span><input type="number" min="0" id="alta-sueldo" value="20000" required class="w-full bg-gray-50 border p-2 rounded-lg"></label>
+                    </div>
+                    <p class="text-[11px] text-gray-500">El horario de entrada y salida es la jornada del doctor: no se le podrán agendar citas fuera de ella.</p>
+                    <input type="password" id="alta-pass" placeholder="Contraseña de acceso (mín. 6)" required class="w-full bg-gray-50 border p-2 rounded-lg">
+                    <button type="submit" class="w-full bg-clinical-700 text-white py-2 rounded-lg font-medium">Dar de alta</button>
+                </form>
+            </div>
+
+            <div id="sec-solicitudes" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-700 font-semibold uppercase">
+                            <tr><th class="px-6 py-3">Cita</th><th class="px-6 py-3">Médico</th><th class="px-6 py-3">Paciente</th><th class="px-6 py-3">Motivo</th><th class="px-6 py-3 text-center">Decisión</th></tr>
+                        </thead>
+                        <tbody id="tabla-solicitudes-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+                <p class="mt-3 text-[11px] text-gray-500">Un médico no cancela por su cuenta: solo solicita. Si autorizas, la cita se cancela y se devuelve al paciente lo que haya pagado.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const adminNombre = localStorage.getItem('user_name') || 'Administrador';
+        const SECCIONES = ['personal', 'alta', 'solicitudes'];
+        const TITULOS = { personal: 'Personal activo', alta: 'Alta de personal', solicitudes: 'Solicitudes de cancelación de médicos' };
+
+        function mostrarSeccion(seccion) {
+            SECCIONES.forEach(id => {
+                document.getElementById(`sec-${id}`).style.display = 'none';
+                document.getElementById(`btn-${id}`).className = "w-full flex items-center gap-3 p-3 rounded-lg hover:bg-clinical-700 text-clinical-50 transition-colors text-left";
+            });
+            document.getElementById(`sec-${seccion}`).style.display = 'block';
+            document.getElementById(`btn-${seccion}`).className = "w-full flex items-center gap-3 p-3 rounded-lg bg-clinical-700 text-white transition-colors text-left font-semibold shadow-inner";
+            document.getElementById('titulo-seccion').innerText = TITULOS[seccion];
+            if (seccion === 'personal') cargarPersonal();
+            if (seccion === 'solicitudes') cargarSolicitudes();
+        }
+
+        async function cargarPersonal() {
+            const res = await fetch('/api/admin/personal');
+            const lista = await res.json();
+            const tbody = document.getElementById('tabla-personal-body');
+            tbody.innerHTML = '';
+            lista.forEach(p => {
+                tbody.innerHTML += `<tr>
+                    <td class="px-6 py-3 font-bold">#${p.id} · ${esc(p.Nombre)}</td>
+                    <td class="px-6 py-3">${esc(p.tipo)}</td>
+                    <td class="px-6 py-3">${p.Cedula ? `<span class="font-mono">${esc(p.Cedula)}</span><br><span class="text-gray-400">${esc(p.Especialidad)}</span>` : '-'}</td>
+                    <td class="px-6 py-3">${esc(p.Horario)}</td>
+                    <td class="px-6 py-3 text-center"><button onclick="bajaPersonal('${p.tipo.toLowerCase()}', ${p.id})" class="text-red-600 bg-red-50 px-2 py-1 rounded font-bold">Dar de baja</button></td>
+                </tr>`;
+            });
+        }
+
+        async function bajaPersonal(tipo, id) {
+            if (!confirm('¿Dar de baja a este integrante del personal? Es una baja lógica.')) return;
+            const res = await fetch(`/api/admin/personal/${tipo}/${id}`, { method: 'DELETE' });
+            const d = await res.json();
+            alert(d.success ? d.message : 'No se pudo dar de baja: ' + d.error);
+            cargarPersonal();
+        }
+
+        function alternarCamposDoctor() {
+            const esDoctor = document.getElementById('alta-tipo').value === 'Doctor';
+            document.getElementById('campos-doctor').style.display = esDoctor ? 'block' : 'none';
+        }
+
+        async function altaPersonal(event) {
+            event.preventDefault();
+            const payload = {
+                tipo: document.getElementById('alta-tipo').value,
+                nombre: document.getElementById('alta-nombre').value,
+                ap_paterno: document.getElementById('alta-ap').value,
+                ap_materno: document.getElementById('alta-am').value,
+                cedula: document.getElementById('alta-cedula').value,
+                especialidad_id: document.getElementById('alta-esp').value,
+                consultorio: document.getElementById('alta-cons').value,
+                hora_inicio: document.getElementById('alta-inicio').value,
+                hora_fin: document.getElementById('alta-fin').value,
+                sueldo: document.getElementById('alta-sueldo').value,
+                contrasenia: document.getElementById('alta-pass').value
+            };
+            const res = await fetch('/api/admin/personal/registro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const d = await res.json();
+            if (d.success) { alert(d.message); document.getElementById('form-alta').reset(); mostrarSeccion('personal'); }
+            else { alert('No se pudo dar de alta: ' + d.error); }
+        }
+
+        async function cargarSolicitudes() {
+            const res = await fetch('/api/admin/solicitudes');
+            const lista = await res.json();
+            const tbody = document.getElementById('tabla-solicitudes-body');
+            tbody.innerHTML = '';
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">No hay solicitudes pendientes.</td></tr>`;
+                return;
+            }
+            lista.forEach(s => {
+                tbody.innerHTML += `<tr>
+                    <td class="px-6 py-3 font-bold">#${s.Folio_Cita}<br><span class="text-gray-400 font-normal">${new Date(s.Fecha).toLocaleDateString()} ${esc(String(s.Horario).substring(0,5))}</span></td>
+                    <td class="px-6 py-3">${esc(s.Nombre_Doctor)}</td>
+                    <td class="px-6 py-3">${esc(s.Nombre_Paciente)}</td>
+                    <td class="px-6 py-3 italic">${esc(s.Motivo)}</td>
+                    <td class="px-6 py-3 text-center">
+                        <button onclick="resolver(${s.id_Solicitud}, 'autorizar')" class="bg-clinical-700 text-white px-2 py-1 rounded font-bold mr-1">Autorizar</button>
+                        <button onclick="resolver(${s.id_Solicitud}, 'rechazar')" class="bg-gray-200 text-gray-700 px-2 py-1 rounded font-bold">Rechazar</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        async function resolver(id, accion) {
+            const res = await fetch(`/api/admin/solicitudes/${id}/${accion}`, { method: 'POST' });
+            const d = await res.json();
+            alert(d.success ? d.message : d.error);
+            cargarSolicitudes();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('admin-display-name').innerText = adminNombre;
+            alternarCamposDoctor();
+            mostrarSeccion('personal');
+        });
+    </script>
+</body>
+</html>

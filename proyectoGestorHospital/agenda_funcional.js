@@ -191,6 +191,15 @@ const cancelarCita = (agenda, citaId, ahora, pago) => {
     return exito({ agenda: nuevaAgenda, reembolso: calcularReembolso(pago) });
 };
 
+// ---------- Barrido periódico (req. 7 y "no acudió") ----------
+/** Citas pendientes de pago cuyo plazo de 8 horas ya venció. */
+const citasConPagoVencido = (citas, ahora) =>
+    citas.filter((c) => c.estado === "PENDIENTE_PAGO" && !pagoVigente(c, ahora));
+
+/** Citas pagadas cuya fecha ya pasó sin haberse atendido. */
+const citasNoAcudidas = (citas, ahora) =>
+    citas.filter((c) => c.estado === "CONFIRMADA" && c.fecha < ahora.fecha);
+
 // ---------- Horarios libres ----------
 /** Huecos [inicio, fin] del doctor en una fecha, de al menos `duracionMin` minutos. */
 const huecosLibres = (agenda, medico, fecha, duracionMin, jornada) => {
@@ -214,4 +223,5 @@ module.exports = {
     finDeCita, seTraslapan, chocanHoras, pacienteTieneChoque,
     validarCita, esFechaPasada, dentroDeVentana,
     agendar, puedeCancelar, pagoVigente, calcularReembolso, cancelarCita, huecosLibres,
+    PORCENTAJE_REEMBOLSO, citasConPagoVencido, citasNoAcudidas,
 };

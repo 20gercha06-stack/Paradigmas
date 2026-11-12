@@ -3,82 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agendar Cita - Hospital</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        input { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #0056b3; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #004494; }
-        #mensaje { margin-top: 15px; padding: 10px; display: none; border-radius: 4px; }
-        .exito { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h2>Agendar Nueva Cita</h2>
-    <form id="formCita">
-        <div class="form-group">
-            <label for="pacienteID">ID del Paciente:</label>
-            <input type="number" id="pacienteID" required>
-        </div>
-        <div class="form-group">
-            <label for="doctorID">ID del Doctor:</label>
-            <input type="number" id="doctorID" required>
-        </div>
-        <div class="form-group">
-            <label for="fecha">Fecha:</label>
-            <input type="date" id="fecha" required>
-        </div>
-        <div class="form-group">
-            <label for="hora">Hora de inicio:</label>
-            <input type="time" id="hora" required>
-        </div>
-        <button type="submit">Generar Cita</button>
-    </form>
-    <div id="mensaje"></div>
-</div>
-
-<script>
-    document.getElementById('formCita').addEventListener('submit', async (e) => {
-        e.preventDefault(); // Evita que la página se recargue
-
-        const pacienteID = document.getElementById('pacienteID').value;
-        const doctorID = document.getElementById('doctorID').value;
-        const fecha = document.getElementById('fecha').value;
-        const hora = document.getElementById('hora').value;
-        const divMensaje = document.getElementById('mensaje');
-
-        try {
-            // Enviar datos al servidor Express
-            const respuesta = await fetch('/api/citas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pacienteID, doctorID, fecha, hora })
-            });
-
-            const resultado = await respuesta.json();
-            divMensaje.style.display = 'block';
-
-            if (respuesta.ok) {
-                divMensaje.className = 'exito';
-                divMensaje.textContent = resultado.mensaje;
-                document.getElementById('formCita').reset();
-            } else {
-                divMensaje.className = 'error';
-                divMensaje.textContent = "Error: " + resultado.error;
-            }
-        } catch (error) {
-            divMensaje.style.display = 'block';
-            divMensaje.className = 'error';
-            divMensaje.textContent = "Error al conectar con el servidor.";
+    <title>SGBD Hospital | Acceso y Registro</title>
+    <script src="api.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { clinical: { 50: '#f0fdfa', 500: '#14b8a6', 700: '#0f766e', 900: '#134e4a' } } } }
         }
-    });
-</script>
+    </script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center font-sans antialiased">
 
+    <div class="flex w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden min-h-[550px]">
+        
+        <div class="hidden md:flex w-1/2 bg-clinical-700 items-center justify-center p-12 relative overflow-hidden">
+            <div class="absolute top-[-10%] left-[-10%] w-64 h-64 bg-clinical-500 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-clinical-900 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+            <div class="relative z-10 text-white text-center">
+                <i class="ri-hospital-line text-6xl mb-4"></i>
+                <h1 class="text-4xl font-bold mb-2">MediGest SGBD</h1>
+                <p class="text-clinical-50 text-sm opacity-90">Gestión Integral de Citas, Recetas y Consultorios.</p>
+            </div>
+        </div>
+
+        <div class="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center relative overflow-y-auto max-h-screen">
+            
+            <div id="vista-login" class="block transition-all duration-300">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Bienvenido de nuevo</h2>
+                <p class="text-gray-500 mb-8 text-sm">Ingresa tus credenciales para acceder al sistema.</p>
+
+                <form id="loginForm" onsubmit="iniciarSesion(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Perfil de Acceso</label>
+                        <select id="perfil" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                            <option value="" disabled selected>Selecciona tu rol...</option>
+                            <option value="paciente">Paciente</option>
+                            <option value="doctor">Doctor</option>
+                            <option value="recepcionista">Recepcionista</option>
+                            <option value="administrador">Administrador</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                        <input type="text" id="usuario" required class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                        <input type="password" id="password" required class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                    </div>
+                    <button type="submit" class="w-full text-white bg-clinical-700 hover:bg-clinical-900 font-medium rounded-lg text-sm px-5 py-3 mt-4 transition-colors shadow-lg">Iniciar Sesión</button>
+                </form>
+                
+                <div class="mt-6 text-center border-t pt-4">
+                    <p class="text-sm text-gray-600">¿Eres nuevo paciente?</p>
+                    <button onclick="alternarVistas()" class="text-clinical-700 hover:underline font-bold text-sm mt-1">Regístrate aquí</button>
+                </div>
+            </div>
+
+            <div id="vista-registro" class="hidden transition-all duration-300">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Alta de Paciente</h2>
+                <p class="text-gray-500 mb-4 text-sm">Crea tu cuenta para agendar citas médicas.</p>
+
+                <form id="registroForm" onsubmit="registrarPaciente(event)" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Nombre(s)</label>
+                            <input type="text" id="reg-nombre" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Apellidos</label>
+                            <input type="text" id="reg-apellidos" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2" placeholder="Molina Cordova">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Ciudad</label>
+                            <input type="text" id="reg-ciudad" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Calle</label>
+                            <input type="text" id="reg-calle" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2" placeholder="Av. Universidad">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Colonia</label>
+                            <input type="text" id="reg-colonia" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2" placeholder="Centro">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Número Ext/Int</label>
+                            <input type="text" id="reg-numero" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2" placeholder="30-A">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Crear Contraseña</label>
+                        <input type="password" id="reg-pass" required class="bg-gray-50 border border-gray-300 text-xs rounded-lg block w-full p-2">
+                    </div>
+                    <button type="submit" class="w-full text-white bg-clinical-500 hover:bg-clinical-700 font-medium rounded-lg text-sm px-5 py-2.5 mt-2 transition-colors">Crear Cuenta</button>
+                </form>
+                
+                <div class="mt-4 text-center">
+                    <button onclick="alternarVistas()" class="text-gray-500 hover:text-gray-800 text-sm underline"><i class="ri-arrow-left-line"></i> Volver al Login</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function alternarVistas() {
+            document.getElementById('vista-login').classList.toggle('hidden');
+            document.getElementById('vista-registro').classList.toggle('hidden');
+        }
+
+        async function iniciarSesion(event) {
+            event.preventDefault(); 
+            const perfil = document.getElementById('perfil').value;
+            const usuario = document.getElementById('usuario').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ perfil, usuario, password })
+                });
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user_id', data.user.id);
+                    localStorage.setItem('user_name', data.user.Nombre);
+                    window.location.href = perfil + '.html'; 
+                } else {
+                    alert('Error: ' + (data.message || 'Credenciales incorrectas'));
+                }
+            } catch (err) {
+                alert('No se pudo establecer conexión con el servidor.');
+            }
+        }
+
+        async function registrarPaciente(event) {
+            event.preventDefault();
+            const payload = {
+                nombre: document.getElementById('reg-nombre').value,
+                apellidos: document.getElementById('reg-apellidos').value,
+                ciudad: document.getElementById('reg-ciudad').value,
+                calle: document.getElementById('reg-calle').value,
+                colonia: document.getElementById('reg-colonia').value,
+                numero: document.getElementById('reg-numero').value,
+                contrasenia: document.getElementById('reg-pass').value
+            };
+
+            try {
+                const res = await fetch('/api/pacientes/registro', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    alert("¡Registro exitoso! Ya puedes iniciar sesión con tu nombre y contraseña.");
+                    document.getElementById('registroForm').reset();
+                    alternarVistas();
+                } else {
+                    alert("No se pudo registrar:\n" + (data.error || "Revisa tus datos."));
+                }
+            } catch (err) {
+                alert("Error de conexión al servidor.");
+            }
+        }
+    </script>
 </body>
 </html>

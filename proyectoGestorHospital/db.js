@@ -10,6 +10,7 @@ const pool = mysql.createPool({
     port: Number(process.env.DB_PORT || 3306),
     waitForConnections: true,
     connectionLimit: 10,
+    decimalNumbers: true, // DECIMAL llega como número, no como texto
     dateStrings: true   // DATE y TIME llegan como texto ('2026-11-07', '09:00:00'), no como Date
 });
 

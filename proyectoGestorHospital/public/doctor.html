@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MediGest | Consulta Médica</title>
+    <script src="api.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { colors: { clinical: { 50: '#f0fdfa', 500: '#14b8a6', 700: '#0f766e', 900: '#134e4a' } } } } }
+    </script>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden font-sans text-xs antialiased">
+
+    <aside class="w-64 bg-clinical-900 text-white flex flex-col h-full shadow-xl">
+        <div class="p-6 flex items-center gap-3 border-b border-clinical-700">
+            <i class="ri-user-md-line text-2xl text-clinical-500"></i>
+            <h1 class="text-base font-bold">MediGest Médico</h1>
+        </div>
+        <nav class="flex-1 p-4 space-y-1">
+            <button onclick="mostrarSeccion('agenda')" id="btn-agenda" class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors">
+                <i class="ri-calendar-check-line"></i> Agenda de Consultas
+            </button>
+            <button onclick="mostrarSeccion('bitacora')" id="btn-bitacora" class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors">
+                <i class="ri-history-line"></i> Bitácora de Pacientes
+            </button>
+        </nav>
+        <div class="p-4 border-t border-clinical-700">
+            <button onclick="cerrarSesion()" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-red-600 transition-colors text-left"><i class="ri-logout-box-r-line"></i> Salir</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
+            <h2 id="titulo-seccion" class="text-base font-bold text-gray-800">Cargando...</h2>
+            <span id="doctor-display-name" class="font-medium text-gray-600">--</span>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-gray-50">
+            <div id="sec-agenda" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-700 font-semibold uppercase">
+                            <tr>
+                                <th class="px-6 py-4">Folio Cita</th>
+                                <th class="px-6 py-4">Fecha / Hora</th>
+                                <th class="px-6 py-4">Paciente</th>
+                                <th class="px-6 py-4">Estatus Actual</th>
+                                <th class="px-6 py-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-agenda-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-bitacora" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-3">
+                    <input type="text" id="buscar-paciente-bitacora" placeholder="ID o Nombre Completo del paciente..." class="flex-1 bg-gray-50 border p-2 rounded-lg outline-none">
+                    <button onclick="buscarBitacoraPaciente()" class="bg-clinical-700 text-white px-4 py-2 rounded-lg font-medium">Consultar Bitácora</button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left text-[10px]">
+                        <thead class="bg-gray-100 text-gray-700 font-semibold uppercase">
+                            <tr>
+                                <th class="px-4 py-3">ID Mov / Fecha</th>
+                                <th class="px-4 py-3">Folio Cita / Fecha</th>
+                                <th class="px-4 py-3">Paciente</th>
+                                <th class="px-4 py-3">Médico / Especialidad</th>
+                                <th class="px-4 py-3">Costo</th>
+                                <th class="px-4 py-3">Estatus</th>
+                                <th class="px-4 py-3">Diagnóstico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-bitacora-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-receta" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="text-sm font-bold text-gray-800">Generar Receta — Folio #<span id="modal-folio-title">0</span></h3>
+                <button onclick="cerrarModalReceta()"><i class="ri-close-line text-lg"></i></button>
+            </div>
+            <form id="form-receta-medico" onsubmit="enviarRecetaCompleta(event)" class="space-y-4">
+                <input type="hidden" id="receta-folio">
+                <div><label class="block font-medium mb-1">Diagnóstico Clínico</label><textarea id="receta-diagnostico" required rows="2" class="w-full bg-gray-50 border p-2 rounded-lg outline-none focus:border-clinical-500"></textarea></div>
+                <div>
+                    <div class="flex justify-between items-center mb-1"><label class="block font-medium">Medicamentos</label><button type="button" onclick="agregarFilaMedicamento()" class="text-clinical-700 font-bold hover:underline">+ Fila</button></div>
+                    <div id="contenedor-medicamentos" class="space-y-2"><input type="text" placeholder="Medicamento y dosis..." required class="w-full bg-gray-50 border p-2 rounded-lg outline-none input-med"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block font-medium mb-1">Tratamiento</label><input type="text" id="receta-tratamiento" required class="w-full bg-gray-50 border p-2 rounded-lg"></div>
+                    <div><label class="block font-medium mb-1">Duración Global</label><input type="text" id="receta-duracion" required class="w-full bg-gray-50 border p-2 rounded-lg"></div>
+                </div>
+                <div><label class="block font-medium mb-1">Observaciones</label><input type="text" id="receta-observacion" class="w-full bg-gray-50 border p-2 rounded-lg"></div>
+                <div class="pt-2 flex gap-3"><button type="button" onclick="cerrarModalReceta()" class="w-1/3 bg-gray-100 rounded-lg py-2">Cancelar</button><button type="submit" class="w-2/3 bg-clinical-700 text-white rounded-lg py-2 font-medium">Guardar Receta</button></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const docName = localStorage.getItem('user_name') || 'Médico';
+
+        function mostrarSeccion(seccion) {
+            ['agenda', 'bitacora'].forEach(id => {
+                document.getElementById(`sec-${id}`).style.display = 'none';
+                document.getElementById(`btn-${id}`).className = "w-full flex items-center gap-3 p-3 rounded-lg hover:bg-clinical-700 text-clinical-50 transition-colors text-left";
+            });
+            document.getElementById(`sec-${seccion}`).style.display = 'block';
+            document.getElementById(`btn-${seccion}`).className = "w-full flex items-center gap-3 p-3 rounded-lg bg-clinical-700 text-white transition-colors text-left font-semibold shadow-inner";
+            document.getElementById('titulo-seccion').innerText = seccion === 'agenda' ? 'Citas Asignadas al Médico' : 'Bitácora de Auditoría Clínica';
+            if(seccion === 'agenda') cargarAgendaDoctor();
+        }
+
+        async function cargarAgendaDoctor() {
+            const res = await fetch(`/api/medicos/agenda-sp?nombre=${encodeURIComponent(docName)}`);
+            const citas = await res.json();
+            const tbody = document.getElementById('tabla-agenda-body');
+            tbody.innerHTML = '';
+            const hoyD = new Date();
+            const hoyStr = `${hoyD.getFullYear()}-${String(hoyD.getMonth()+1).padStart(2,'0')}-${String(hoyD.getDate()).padStart(2,'0')}`;
+
+            citas.forEach(c => {
+                const fechaCitaStr = c.Fecha.slice(0, 10);
+                const estatus = c.Estatus ? c.Estatus.toString().trim().toLowerCase() : '';
+                let action = '';
+                if (estatus.includes('pagada') || estatus.includes('atender')) {
+                    action = (fechaCitaStr === hoyStr) ? `<button onclick="abrirModalReceta(${c.Folio_Cita})" class="bg-clinical-700 text-white px-3 py-1 rounded font-bold">Atender</button>` : `<span class="text-gray-400 italic bg-gray-100 px-2 py-1 rounded-lg">Bloqueada (Fecha futura)</span>`;
+                } else if (estatus.includes('atendida')) {
+                    action = `<span class="text-emerald-700 font-semibold bg-emerald-50 border px-2 py-0.5 rounded-lg">Atendida</span>`;
+                }
+                if (!estatus.includes('atendida')) action += ` <button onclick="solicitarCancelacion(${c.Folio_Cita})" class="text-red-600 bg-red-50 px-2 py-1 rounded font-bold ml-1">Solicitar cancelación</button>`;
+                tbody.innerHTML += `<tr>
+                    <td class="px-6 py-4 font-bold">#${c.Folio_Cita}</td>
+                    <td class="px-6 py-4">${new Date(c.Fecha).toLocaleDateString()}<br><span class="text-gray-400">${c.Horario.substring(0,5)}</span></td>
+                    <td class="px-6 py-4 font-medium">${esc(c.Nombre_Paciente)}</td>
+                    <td class="px-6 py-4"><span class="bg-blue-50 text-blue-800 px-2 rounded-full">${esc(c.Estatus)}</span></td>
+                    <td class="px-6 py-4 text-center">${action}</td>
+                </tr>`;
+            });
+        }
+
+        // Req. 4: el médico no cancela solo; envía una solicitud que el administrador autoriza o rechaza.
+        async function solicitarCancelacion(folio) {
+            const motivo = prompt('Motivo de la cancelación de la cita #' + folio + ':');
+            if (!motivo || !motivo.trim()) return;
+            const res = await fetch('/api/medicos/solicitar-cancelacion', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ Folio_Cita: folio, motivo }) });
+            const data = await res.json();
+            alert(data.success ? data.message : 'No se pudo enviar: ' + data.error);
+        }
+
+        async function buscarBitacoraPaciente() {
+            const busqueda = document.getElementById('buscar-paciente-bitacora').value.trim();
+            const res = await fetch(`/api/medicos/historial-bitacora?busqueda=${encodeURIComponent(busqueda)}`);
+            const logs = await res.json();
+            const tbody = document.getElementById('tabla-bitacora-body');
+            tbody.innerHTML = '';
+            
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No se encontraron registros en la bitácora.</td></tr>`;
+                return;
+            }
+
+            logs.forEach(l => {
+                const idBitacora = l.id_bitacora || l.id_Bitacora || 1;
+                const fechaMov = l.Fecha_Movimiento || l.fecha_movimiento || new Date();
+                const folioCita = l.Folio_Cita || l.folio_cita;
+                const fechaCita = l.Fecha_Cita || l.fecha_cita;
+                const paciente = esc(l.Nombre_Paciente || l.nombre_paciente || 'Paciente');
+                const doctor = esc(l.Nombre_Doctor || l.nombre_doctor || 'Médico');
+                const specialty = l.Especialidad || l.especialidad || 'General';
+                const costo = l.Costo || l.costo || 0;
+                const estatus = l.Estatus_Cita || l.estatus_cita || 'Registrado';
+                const diagnostico = esc(l.Diagnostico || l.diagnostico || 'Ninguno');
+
+                tbody.innerHTML += `<tr>
+                    <td class="px-4 py-3 font-bold">#${idBitacora}<br><span class="text-gray-400 font-normal">${new Date(fechaMov).toLocaleDateString()}</span></td>
+                    <td class="px-4 py-3">#${folioCita}<br><span class="text-gray-400">${new Date(fechaCita).toLocaleDateString()}</span></td>
+                    <td class="px-4 py-3 font-medium">${paciente}</td>
+                    <td class="px-4 py-3">${doctor}<br><span class="text-gray-400">${specialty}</span></td>
+                    <td class="px-4 py-3 font-bold">$${Number(costo).toFixed(2)}</td>
+                    <td class="px-4 py-3"><span class="bg-purple-50 text-purple-800 px-2 rounded-full capitalize text-[9px] font-semibold">${estatus}</span></td>
+                    <td class="px-4 py-3 text-gray-500 italic truncate max-w-xs">${diagnostico}</td>
+                </tr>`;
+            });
+        }
+
+        function abrirModalReceta(folio) { document.getElementById('modal-folio-title').innerText = folio; document.getElementById('receta-folio').value = folio; document.getElementById('contenedor-medicamentos').innerHTML = `<input type="text" placeholder="Medicamento..." required class="w-full bg-gray-50 border p-2 rounded-lg outline-none input-med">`; document.getElementById('form-receta-medico').reset(); document.getElementById('modal-receta').style.display = 'flex'; }
+        function cerrarModalReceta() { document.getElementById('modal-receta').style.display = 'none'; }
+        function agregarFilaMedicamento() { const div = document.createElement('div'); div.className = "flex gap-2 items-center"; div.innerHTML = `<input type="text" placeholder="Siguiente medicamento..." required class="w-full bg-gray-50 border p-2 rounded-lg outline-none input-med"><button type="button" onclick="this.parentElement.remove()" class="text-red-500"><i class="ri-delete-bin-line"></i></button>`; document.getElementById('contenedor-medicamentos').appendChild(div); }
+        
+        async function enviarRecetaCompleta(event) { 
+            event.preventDefault(); 
+            const inputs = document.querySelectorAll('.input-med'); 
+            const listaMedicamentos = []; 
+            inputs.forEach(i => { if(i.value.trim()) listaMedicamentos.push(i.value.trim()); }); 
+
+            // CONCATENAMOS LA DURACIÓN AL TRATAMIENTO PARA QUE NO SE PIERDA EL DATO DE LA RÚBRICA
+            const tratamientoFinal = document.getElementById('receta-tratamiento').value + ' | Duración: ' + document.getElementById('receta-duracion').value;
+
+            const payload = { 
+                Folio_Cita: document.getElementById('receta-folio').value, 
+                Diagnostico: document.getElementById('receta-diagnostico').value, 
+                Tratamiento: tratamientoFinal, 
+                Observacion: document.getElementById('receta-observacion').value, 
+                medicamentos: listaMedicamentos 
+            }; 
+
+            const res = await fetch('/api/recetas/generar-sp', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); 
+            const data = await res.json(); 
+            if(data.success) { 
+                alert('✅ ¡Receta generada con éxito!'); 
+                cerrarModalReceta(); 
+                cargarAgendaDoctor(); 
+            } else {
+                alert('Error al generar receta: ' + data.error);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => { document.getElementById('doctor-display-name').innerText = `Dr. ${docName}`; mostrarSeccion('agenda'); });
+    </script>
+</body>
+</html>

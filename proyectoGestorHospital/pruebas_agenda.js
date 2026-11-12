@@ -2,7 +2,7 @@
 const fs = require("fs");
 const {
     finDeCita, agendar, huecosLibres, cancelarCita, calcularReembolso,
-    pagoVigente, validarCita,
+    pagoVigente, validarCita, citasConPagoVencido, citasNoAcudidas,
 } = require("./agenda_funcional.js");
 
 const JORNADA = { inicio: 480, fin: 1080 };               // 08:00 a 18:00
@@ -107,6 +107,25 @@ const casos = [
             huecosLibres(ag, "D1", FECHA_OK, 30, JORNADA);
             return JSON.stringify(ag) === antes;   // si alguna función mutara, lanzaría error al estar congelada
         }],
+    ["P27", "Barrido: pago vencido a las 8 h y 1 min (límite)", "Cita pendiente creada hace 481 min",
+        JSON.stringify(["V"]),
+        () => JSON.stringify(citasConPagoVencido(
+            [C("V", "D1", "P1", FECHA_OK, 540, 30, { estado: "PENDIENTE_PAGO", creada: { fecha: "2026-11-02", minutos: 119 } })],
+            AHORA).map((c) => c.id))],
+    ["P28", "Barrido: pago vigente a las 8 h exactas (límite)", "Cita pendiente creada hace 480 min",
+        JSON.stringify([]),
+        () => JSON.stringify(citasConPagoVencido(
+            [C("V", "D1", "P1", FECHA_OK, 540, 30, { estado: "PENDIENTE_PAGO", creada: { fecha: "2026-11-02", minutos: 120 } })],
+            AHORA).map((c) => c.id))],
+    ["P29", "Barrido: cita pagada de ayer sin atender = no acudió", "Cita CONFIRMADA del 2026-11-01",
+        JSON.stringify(["A"]),
+        () => JSON.stringify(citasNoAcudidas(
+            [C("A", "D1", "P1", "2026-11-01", 540, 30, { estado: "CONFIRMADA" }),
+             C("B", "D1", "P1", "2026-11-02", 540, 30, { estado: "CONFIRMADA" }),
+             C("E", "D1", "P1", "2026-11-01", 600, 30, { estado: "PENDIENTE_PAGO" })],
+            AHORA).map((c) => c.id))],
+    ["P30", "Barrido sin citas", "Lista vacía", JSON.stringify([[], []]),
+        () => JSON.stringify([citasConPagoVencido([], AHORA), citasNoAcudidas([], AHORA)])],
 ];
 
 console.log("--- EJECUCIÓN DE PRUEBAS ---");
