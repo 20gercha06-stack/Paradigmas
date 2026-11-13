@@ -1,8 +1,7 @@
 -- ==========================================================================
--- Gestor de citas del hospital (MySQL 8) - esquema, vistas y triggers
+-- Gestor de citas del hospital - esquema, vistas y triggers
 -- Las reglas de negocio (traslapes, 8 h, 48 h-3 meses, reembolso 50 %...) viven
 -- en agenda_funcional.js. Aquí solo hay datos, restricciones y auditoría.
--- Ejecutar primero este archivo y después scriptEjem.sql
 -- ==========================================================================
 CREATE DATABASE IF NOT EXISTS gestor_citas CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE gestor_citas;
